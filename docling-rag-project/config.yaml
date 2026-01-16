@@ -1,0 +1,48 @@
+# Configuration pour le projet RAG Docling
+
+# Neptune Configuration
+neptune:
+  endpoint: "your-neptune-cluster.cluster-xxxxx.region.neptune.amazonaws.com"
+  port: 8182
+  use_iam: true
+  region: "eu-west-1"
+
+# OpenSearch Configuration
+opensearch:
+  endpoint: "https://your-opensearch-domain.region.es.amazonaws.com"
+  index_name: "document-chunks"
+  username: "admin"  # Si pas d'IAM
+  password: ""       # Si pas d'IAM
+  use_iam: true
+  region: "eu-west-1"
+
+# Embeddings Configuration
+embeddings:
+  provider: "cohere"  # cohere ou sentence-transformers
+  model: "embed-multilingual-v3"
+  dimension: 1024
+  batch_size: 96
+  api_key: ""  # Votre clé API Cohere (ou via variable d'environnement COHERE_API_KEY)
+
+# Docling Configuration
+docling:
+  chunk_size: 512
+  chunk_overlap: 50
+  min_chunk_size: 100
+
+# S3 Configuration (pour évolution future)
+s3:
+  bucket: "your-bucket-name"
+  prefix: "documents/"
+  region: "eu-west-1"
+
+# Query Configuration
+query:
+  top_k: 5
+  similarity_threshold: 0.7
+  use_neptune_filter: false
+
+# Output Configuration
+output:
+  dry_run_dir: "dry_run_output"
+  results_dir: "data/output"

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data
+data/input/*.pdf
+data/output/*.txt
+dry_run_output/*.csv
+
+# Config (si contient des secrets)
+config.local.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
