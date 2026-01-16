@@ -10,6 +10,8 @@ ENV/
 *.egg-info/
 dist/
 build/
+dry_run_output/*.pdf
+dry_run_output/*.docx
 
 # IDE
 .vscode/
