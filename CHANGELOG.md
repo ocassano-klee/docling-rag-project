@@ -256,3 +256,198 @@ embeddings:
 - ✅ Génération de prompts augmentés
 - ✅ Mode dry-run
 - ✅ Documentation complète
+
+
+---
+
+## Version 2.0.0 - Graphe de connaissances interconnecté
+
+### 🎯 Nouveautés majeures
+
+#### 1. Extraction automatique de topics
+- **Identification de concepts** : Extraction automatique de concepts métier et mots-clés depuis chaque chunk
+- **17 concepts métier prédéfinis** : assurance, remboursement, dentaire, santé, intervention, mutuelle, contrat, plafond, prestation, bénéficiaire, facture, paiement, compte, client, document, période, montant
+- **Scoring intelligent** : Les concepts métier ont un score plus élevé que les mots-clés simples
+- **Normalisation** : Les topics sont normalisés pour éviter les doublons (accents, casse, etc.)
+
+#### 2. Graphe interconnecté via topics partagés
+- **Nœuds Topic partagés** : Utilisation de `MERGE` au lieu de `CREATE` dans Neptune
+- **Relations ABOUT** : Chaque chunk est lié aux topics qu'il contient
+- **Liaison automatique** : Les documents partageant des topics sont automatiquement connectés
+- **Navigation contextuelle** : Possibilité de naviguer entre documents via concepts communs
+
+#### 3. Extraction de tables
+- **Détection automatique** : Docling identifie les tables dans les PDFs
+- **Extraction du contenu** : Le texte des cellules est extrait et formaté
+- **Chunking des tables** : Les tables sont traitées comme des chunks spéciaux
+- **Support multi-pages** : Gestion des tables réparties sur plusieurs pages
+
+#### 4. Visualisation du graphe Neptune
+- **Image PNG automatique** : Génération d'une visualisation à chaque ingestion
+- **Couleurs par type** :
+  - Rouge : Documents
+  - Bleu : Chunks
+  - Jaune : Topics (partagés)
+  - Vert : Annotations
+- **Layout hiérarchique** : Organisation claire sur 4 niveaux
+- **Statistiques** : Affichage du nombre de nœuds et relations
+- **Haute résolution** : Export en 300 DPI
+
+#### 5. Visualisation interactive (Graph Viewer)
+- **Outil HTML interactif** : `dry_run_output/viewer/generate_graph_viewer.py`
+- **Lecture multi-CSV** : Parse tous les fichiers `neptune_inserts_*.csv`
+- **Identification des topics partagés** : Détecte automatiquement les topics liés à plusieurs documents
+- **Navigation interactive** : Zoom, pan, sélection de nœuds avec vis.js
+- **Layouts multiples** : Hiérarchique, force-directed, circulaire
+- **Statistiques en temps réel** : Nombre de documents, chunks, topics, relations
+- **Focus automatique** : Bouton pour zoomer sur les topics partagés
+- **Documentation complète** : README.md et USAGE_GUIDE.md dans le dossier viewer
+
+#### 6. Traitement batch de plusieurs PDFs
+- **Nommage intelligent** : Chaque document génère ses propres fichiers (`{doc_name}.csv`, `{doc_name}.png`)
+- **Scripts batch** : `batch_ingestion.sh` (Linux/Mac) et `batch_ingestion.bat` (Windows)
+- **Pas d'écrasement** : Les sorties précédentes sont préservées
+- **Progression** : Affichage de la progression (1/N, 2/N, etc.)
+
+### 🔧 Améliorations techniques
+
+#### Extraction PDF
+- **Correction majeure** : Utilisation de `doc.iterate_items()` au lieu de `for item in doc.body`
+- **Fallback robuste** : Si `iterate_items()` ne retourne rien, utilisation de `export_to_text()`
+- **Support des tables** : Méthode `_extract_table_text()` pour extraire le contenu des tables
+- **Gestion des pages** : Meilleure détection du numéro de page via `prov_item.page_no`
+
+#### Pipeline d'ingestion
+- **6 étapes** au lieu de 5 :
+  1. Extraction et chunking avec Docling
+  2. Génération des embeddings
+  3. **🆕 Extraction des topics et concepts**
+  4. Insertion dans Neptune
+  5. Insertion dans OpenSearch
+  6. Export/Visualisation
+- **Logs améliorés** : Affichage du nombre de topics identifiés
+
+#### Configuration
+- **Modèle Cohere corrigé** : `embed-multilingual-v3.0` au lieu de `embed-multilingual-v3`
+- **Dépendances ajoutées** : `networkx>=3.0` et `matplotlib>=3.7.0`
+
+### 📚 Documentation
+
+#### Nouveaux fichiers
+- **TOPICS_LINKING.md** : Guide complet sur la liaison des documents via topics (exemples, requêtes Cypher, cas d'usage)
+- **BATCH_PROCESSING.md** : Guide pour le traitement de plusieurs PDFs (scripts, organisation, dépannage)
+- **WHATS_NEW_V2.md** : Résumé convivial des nouveautés de la v2.0
+- **src/topic_extractor.py** : Module d'extraction de topics (300+ lignes)
+- **dry_run_output/viewer/generate_graph_viewer.py** : Générateur de visualisation interactive (600+ lignes)
+- **dry_run_output/viewer/README.md** : Documentation du Graph Viewer
+- **dry_run_output/viewer/USAGE_GUIDE.md** : Guide d'utilisation détaillé du viewer
+
+#### Fichiers mis à jour
+- **README.md** : Ajout section "Nouveautés v2.0", mise à jour architecture et modèle de données
+- **START_HERE.md** : Mise à jour des fonctionnalités et points forts
+- **CHANGELOG.md** : Ce fichier
+
+### 🐛 Corrections de bugs
+
+1. **0 chunks générés** : Le code utilisait une mauvaise méthode pour itérer sur `doc.body`
+   - Avant : `for item in doc.body` → retournait des tuples
+   - Après : `for item, level in doc.iterate_items()` → retourne les vrais éléments
+
+2. **Tables non extraites** : Les tables de la page 2 n'étaient pas traitées
+   - Ajout de la détection et extraction des tables via `doc.tables`
+   - Méthode `_extract_table_text()` pour formater le contenu
+
+3. **Import manquant** : `NameError: name 'Set' is not defined`
+   - Ajout de `Set` dans les imports de `typing`
+
+4. **Fichiers écrasés** : En mode dry-run, les fichiers étaient écrasés
+   - Ajout du nom du document dans les noms de fichiers
+
+### 📊 Statistiques
+
+- **Fichiers ajoutés** : 3
+  - `src/topic_extractor.py` (300+ lignes)
+  - `TOPICS_LINKING.md` (200+ lignes)
+  - `BATCH_PROCESSING.md` (150+ lignes)
+
+- **Fichiers modifiés** : 7
+  - `src/ingestion.py` (+200 lignes)
+  - `src/docling_processor.py` (+50 lignes)
+  - `config.yaml` (1 ligne)
+  - `requirements.txt` (+2 lignes)
+  - `README.md` (+100 lignes)
+  - `START_HERE.md` (+30 lignes)
+  - `CHANGELOG.md` (ce fichier)
+
+- **Lignes de code ajoutées** : ~800
+- **Topics extraits (exemple)** : 17 topics uniques depuis un document de 2 pages
+- **Chunks générés (exemple)** : 6 chunks (4 texte + 2 tables)
+
+### 🎓 Exemples de requêtes Neptune
+
+#### Trouver tous les documents sur un topic
+```cypher
+MATCH (d:Document)-[:HAS_CHUNK]->(c:Chunk)-[:ABOUT]->(t:Topic {name: 'assurance'})
+RETURN DISTINCT d.title
+```
+
+#### Trouver les documents similaires
+```cypher
+MATCH (d1:Document)-[:HAS_CHUNK]->(c1:Chunk)-[:ABOUT]->(t:Topic)<-[:ABOUT]-(c2:Chunk)<-[:HAS_CHUNK]-(d2:Document)
+WHERE d1 <> d2
+WITH d1, d2, COUNT(DISTINCT t) as common_topics
+WHERE common_topics >= 3
+RETURN d1.title, d2.title, common_topics
+ORDER BY common_topics DESC
+```
+
+#### Trouver les topics les plus populaires
+```cypher
+MATCH (c:Chunk)-[:ABOUT]->(t:Topic)
+RETURN t.name, t.type, COUNT(c) as chunk_count
+ORDER BY chunk_count DESC
+LIMIT 10
+```
+
+### 🚀 Migration depuis v1.x
+
+1. Mettre à jour les dépendances :
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Mettre à jour `config.yaml` :
+   ```yaml
+   embeddings:
+     model: "embed-multilingual-v3.0"  # Ajouter .0
+   ```
+
+3. Réingérer les documents existants pour bénéficier des topics :
+   ```bash
+   python src/ingestion.py --input data/input/document.pdf --dry-run
+   ```
+
+4. Les anciens documents dans Neptune ne seront pas automatiquement liés aux nouveaux topics. Pour une migration complète, il faudrait :
+   - Supprimer les anciens documents de Neptune
+   - Réingérer tous les documents avec la v2.0
+
+### ⚠️ Breaking Changes
+
+- **Aucun** : La v2.0 est rétrocompatible avec la v1.x
+- Les anciens documents continuent de fonctionner
+- Les nouveaux documents bénéficient automatiquement des topics
+
+### 🔮 Prochaines étapes
+
+- [ ] Extraction d'entités nommées (personnes, organisations, lieux)
+- [ ] Liens de similarité sémantique entre chunks
+- [ ] Interface web pour visualiser le graphe
+- [ ] Support de plus de types de documents (Word, Excel, etc.)
+- [ ] Amélioration de l'extraction de topics avec NLP avancé
+- [ ] Cache des embeddings pour éviter les recalculs
+
+---
+
+**Date de release** : 16 janvier 2026  
+**Contributeurs** : Équipe de développement  
+**Compatibilité** : Python 3.8+, Neptune, OpenSearch, Cohere API

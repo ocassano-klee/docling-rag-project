@@ -85,15 +85,21 @@ docling-rag-project/
 
 ## Fonctionnalités
 
+## Fonctionnalités
+
 ### Script d'ingestion (`ingestion.py`)
 
 1. **Extraction PDF avec Docling** : Parse les PDFs locaux (compatible S3 pour évolution future)
-2. **Chunking intelligent** : Découpe le document en chunks sémantiques
-3. **Annotations contextuelles** : Enrichit chaque chunk avec métadonnées (page, section, type)
-4. **Stockage Neptune** : Insère les annotations et relations dans le graphe
-5. **Embeddings vectoriels** : Génère les représentations vectorielles des chunks
-6. **Indexation OpenSearch** : Stocke les embeddings pour recherche de similarité
-7. **Mode Dry-Run** : Génère des fichiers CSV avec les requêtes sans exécution
+2. **Extraction de tables** : Détecte et extrait automatiquement les tables
+3. **Chunking intelligent** : Découpe le document en chunks sémantiques
+4. **🆕 Extraction de topics** : Identifie automatiquement les concepts métier et mots-clés
+5. **🆕 Graphe interconnecté** : Crée des nœuds Topic partagés entre documents
+6. **Annotations contextuelles** : Enrichit chaque chunk avec métadonnées (page, section, type)
+7. **Stockage Neptune** : Insère les annotations, topics et relations dans le graphe
+8. **Embeddings vectoriels** : Génère les représentations vectorielles des chunks (Cohere)
+9. **Indexation OpenSearch** : Stocke les embeddings pour recherche de similarité
+10. **Visualisation du graphe** : Génère une image PNG du graphe Neptune
+11. **Mode Dry-Run** : Génère des fichiers CSV avec les requêtes sans exécution
 
 ### Script d'interrogation (`query.py`)
 
@@ -224,16 +230,21 @@ python src/query.py --question "..." --use-neptune-filter
 
 ## Mode Dry-Run
 
-En mode dry-run, les fichiers suivants sont générés :
+En mode dry-run, les fichiers suivants sont générés dans `dry_run_output/` :
 
-- `dry_run_output/neptune_inserts.csv` : Requêtes Cypher pour Neptune
-- `dry_run_output/opensearch_inserts.csv` : Requêtes API OpenSearch
+- `neptune_inserts_{doc_name}.csv` : Requêtes Cypher pour Neptune
+- `opensearch_inserts_{doc_name}.csv` : Requêtes API OpenSearch
+- `neptune_graph_{doc_name}.png` : Visualisation du graphe
+
+Chaque document génère ses propres fichiers (identifiés par `{doc_name}`), permettant le traitement de plusieurs PDFs sans écraser les sorties.
 
 Format CSV Neptune :
 ```csv
 query_type,query,parameters
 CREATE_DOCUMENT,"CREATE (d:Document {id: $id, title: $title})","{""id"": ""doc1"", ""title"": ""...""}
+MERGE_TOPIC,"MERGE (t:Topic {id: $id, name: $name})","{""id"": ""topic_assurance"", ""name"": ""assurance""}"
 CREATE_CHUNK,"CREATE (c:Chunk {id: $id, content: $content})","{""id"": ""chunk1"", ...}"
+CREATE_RELATIONSHIP,"MATCH (c:Chunk), (t:Topic) CREATE (c)-[:ABOUT]->(t)",{}
 ```
 
 Format CSV OpenSearch :
@@ -244,20 +255,109 @@ index,document-chunks,doc1_chunk_001,"{""content"": ""..."", ""embedding"": [...
 
 ## Dépendances principales
 
-- `docling` : Extraction et parsing de PDF
+- `docling` : Extraction et parsing de PDF avec détection de tables
 - `cohere` : Génération d'embeddings multilingues (1024 dimensions)
 - `opensearch-py` : Client OpenSearch
 - `gremlinpython` : Client Neptune (Gremlin)
 - `boto3` : SDK AWS (pour S3, IAM)
+- `networkx` : Création et manipulation de graphes
+- `matplotlib` : Visualisation du graphe Neptune
+
+## Documentation complète
+
+### Démarrage rapide
+- **[START_HERE.md](START_HERE.md)** - Point de départ (5 min)
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Guide de démarrage complet
+- **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** - Commandes essentielles
+- **[COHERE_SETUP.md](COHERE_SETUP.md)** - Configuration Cohere
+
+### Concepts avancés
+- **[TOPICS_LINKING.md](TOPICS_LINKING.md)** - 🆕 Liaison des documents via topics
+- **[BATCH_PROCESSING.md](BATCH_PROCESSING.md)** - 🆕 Traitement de plusieurs PDFs
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Détails techniques
+- **[EXAMPLES.md](EXAMPLES.md)** - Exemples d'utilisation
+
+### Support
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Guide de dépannage
+- **[MIGRATION_COHERE.md](MIGRATION_COHERE.md)** - Migration depuis v1.0.0
+- **[CHANGELOG.md](CHANGELOG.md)** - Historique des versions
+
+## Nouveautés v2.0
+
+### 🎯 Graphe de connaissances interconnecté
+
+Les documents sont maintenant automatiquement liés via des **topics partagés** :
+
+```python
+# Document 1 : Remboursement dentaire
+Topics extraits : ["assurance", "dentaire", "remboursement", "santé"]
+
+# Document 2 : Contrat d'assurance
+Topics extraits : ["assurance", "contrat", "mutuelle"]
+
+# Résultat : Les deux documents sont liés via le topic "assurance" !
+```
+
+**Avantages** :
+- Découverte automatique de documents connexes
+- Navigation contextuelle entre documents similaires
+- Analyse thématique de collections de documents
+- Recommandations basées sur les concepts partagés
+
+Voir [TOPICS_LINKING.md](TOPICS_LINKING.md) pour plus de détails.
+
+### 📊 Visualisation du graphe
+
+Chaque ingestion génère automatiquement une image PNG du graphe Neptune :
+- Nœuds rouges : Documents
+- Nœuds bleus : Chunks
+- Nœuds jaunes : Topics (partagés entre documents)
+- Nœuds verts : Annotations
+
+### 🌐 Visualisation interactive (Graph Viewer)
+
+Un outil de visualisation HTML interactif permet d'explorer comment vos documents sont liés :
+
+```bash
+cd dry_run_output/viewer
+python generate_graph_viewer.py
+# Ouvrir graph_viewer.html dans votre navigateur
+```
+
+**Fonctionnalités** :
+- Navigation interactive dans le graphe complet
+- Identification visuelle des topics partagés entre documents
+- Layouts multiples (hiérarchique, force-directed, circulaire)
+- Statistiques en temps réel
+- Zoom et focus sur les connexions importantes
+
+Voir [dry_run_output/viewer/README.md](dry_run_output/viewer/README.md) et [dry_run_output/viewer/USAGE_GUIDE.md](dry_run_output/viewer/USAGE_GUIDE.md) pour plus de détails.
+
+### 🔄 Traitement batch
+
+Traitez plusieurs PDFs sans écraser les sorties :
+
+```bash
+# Traiter tous les PDFs du dossier
+./batch_ingestion.sh  # Linux/Mac
+batch_ingestion.bat   # Windows
+```
+
+Voir [BATCH_PROCESSING.md](BATCH_PROCESSING.md) pour plus de détails.
 
 ## Évolutions futures
 
+- [x] Support complet extraction de tables
+- [x] Batch processing pour ingestion massive
+- [x] Graphe de connaissances interconnecté via topics
+- [x] Visualisation du graphe Neptune (PNG + HTML interactif)
 - [ ] Support complet S3 pour lecture de documents
-- [ ] Batch processing pour ingestion massive
 - [ ] Cache des embeddings
 - [ ] Interface web pour interrogation
-- [ ] Support multi-langues
+- [ ] Support multi-langues avancé
 - [ ] Métriques et monitoring
+- [ ] Extraction d'entités nommées (personnes, organisations)
+- [ ] Liens de similarité sémantique entre chunks
 
 ## Licence
 

@@ -40,6 +40,14 @@ python src/ingestion.py --input data/input/doc.pdf --dry-run
 python src/query.py --question "Test?" --dry-run
 ```
 
+**🎨 Bonus : Visualiser le graphe**
+
+```bash
+cd dry_run_output/viewer
+python generate_graph_viewer.py
+# Ouvrir graph_viewer.html dans votre navigateur
+```
+
 ### 4️⃣ Configurer AWS
 
 Éditer `config.yaml` avec vos endpoints Neptune et OpenSearch.
@@ -71,6 +79,9 @@ python src/query.py --question "Qu'est-ce qu'un Data Fabric?"
 | Fichier | Description | Temps de lecture |
 |---------|-------------|------------------|
 | **[README.md](README.md)** | Vue d'ensemble + architecture | 15 min |
+| **[TOPICS_LINKING.md](TOPICS_LINKING.md)** | 🆕 Liaison des documents via topics | 10 min |
+| **[BATCH_PROCESSING.md](BATCH_PROCESSING.md)** | 🆕 Traitement de plusieurs PDFs | 10 min |
+| **[dry_run_output/viewer/QUICKSTART.md](dry_run_output/viewer/QUICKSTART.md)** | 🆕 Visualisation interactive du graphe | 5 min |
 | **[ARCHITECTURE.md](ARCHITECTURE.md)** | Détails techniques | 20 min |
 | **[EXAMPLES.md](EXAMPLES.md)** | Exemples d'utilisation | 10 min |
 
@@ -85,8 +96,11 @@ python src/query.py --question "Qu'est-ce qu'un Data Fabric?"
 ## 🏗️ Architecture
 
 ```
-PDF → Docling → Chunks → Cohere → Neptune + OpenSearch
-                                      ↓
+PDF → Docling → Chunks → Topics → Cohere → Neptune + OpenSearch
+                   ↓                           ↓
+              Extraction              Graphe interconnecté
+              de tables               via topics partagés
+                                             ↓
 Question → Cohere → OpenSearch → Neptune → Prompt augmenté
 ```
 
@@ -139,13 +153,19 @@ python src/query.py --question "Quelles sont les clauses de résiliation?"
 ## ✨ Fonctionnalités
 
 ✅ Extraction PDF avec structure préservée  
+✅ Extraction automatique de tables  
 ✅ Chunking intelligent avec overlap  
+✅ **🆕 Extraction automatique de topics et concepts**  
+✅ **🆕 Graphe de connaissances interconnecté**  
 ✅ Annotations contextuelles automatiques  
 ✅ Embeddings multilingues haute qualité  
 ✅ Graphe de connaissances (relations)  
 ✅ Recherche vectorielle (similarité cosinus)  
 ✅ Filtrage Neptune optionnel  
 ✅ Mode dry-run (test sans AWS)  
+✅ **🆕 Visualisation du graphe Neptune (PNG)**  
+✅ **🆕 Visualisation interactive HTML (Graph Viewer)**  
+✅ **🆕 Traitement batch de plusieurs PDFs**  
 ✅ Prompts augmentés pour LLM  
 ✅ Support S3 (préparé)  
 
@@ -212,11 +232,14 @@ docling-rag-project/
 
 ## 🌟 Points forts
 
-- ✅ **Qualité** : Cohere embed-multilingual-v3 (meilleur pour le français)
+- ✅ **Qualité** : Cohere embed-multilingual-v3.0 (meilleur pour le français)
+- ✅ **Extraction complète** : Texte + Tables automatiquement
+- ✅ **🆕 Graphe interconnecté** : Documents liés via topics partagés
+- ✅ **🆕 Visualisation** : Image PNG du graphe Neptune générée automatiquement
 - ✅ **Complet** : Ingestion + Interrogation + Documentation
 - ✅ **Flexible** : Mode dry-run, configuration YAML
 - ✅ **Scalable** : AWS Neptune + OpenSearch
-- ✅ **Documenté** : 11 fichiers de documentation
+- ✅ **Documenté** : 13+ fichiers de documentation
 - ✅ **Prêt** : Code fonctionnel, exemples inclus
 
 ---
