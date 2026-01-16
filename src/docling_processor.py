@@ -52,24 +52,55 @@ class DoclingProcessor:
         # Extraction du contenu - l'API Docling retourne le document directement
         doc = result.document
         
-        # Extraire le texte complet par page
-        # On itère sur les pages via leur index
+        # Extraire le texte complet par page en utilisant iterate_items()
         page_texts = {}
-        for item in doc.body:
-            if hasattr(item, 'prov') and item.prov:
+        
+        for item, level in doc.iterate_items():
+            # Vérifier si l'item a du texte et des informations de provenance
+            if hasattr(item, 'text') and item.text and hasattr(item, 'prov') and item.prov:
                 for prov_item in item.prov:
                     page_no = prov_item.page_no
                     if page_no not in page_texts:
                         page_texts[page_no] = []
                     
-                    # Extraire le texte de l'élément
-                    text = item.text if hasattr(item, 'text') else str(item)
                     element = {
                         "type": item.__class__.__name__,
-                        "content": text,
+                        "content": item.text,
                         "bbox": prov_item.bbox if hasattr(prov_item, 'bbox') else None
                     }
                     page_texts[page_no].append(element)
+        
+        # Extraire les tables séparément
+        if hasattr(doc, 'tables') and doc.tables:
+            print(f"Extraction de {len(doc.tables)} table(s) détectée(s)")
+            for table in doc.tables:
+                if hasattr(table, 'prov') and table.prov:
+                    for prov_item in table.prov:
+                        page_no = prov_item.page_no
+                        if page_no not in page_texts:
+                            page_texts[page_no] = []
+                        
+                        # Extraire le contenu de la table
+                        table_text = self._extract_table_text(table)
+                        if table_text:
+                            element = {
+                                "type": "TableItem",
+                                "content": table_text,
+                                "bbox": prov_item.bbox if hasattr(prov_item, 'bbox') else None
+                            }
+                            page_texts[page_no].append(element)
+        
+        # Si aucune page n'a été extraite avec iterate_items, utiliser export_to_text comme fallback
+        if not page_texts:
+            print("Aucun contenu extrait avec iterate_items, utilisation de export_to_text()")
+            full_text = doc.export_to_text()
+            if full_text:
+                # Créer une seule page avec tout le texte
+                page_texts[1] = [{
+                    "type": "Text",
+                    "content": full_text,
+                    "bbox": None
+                }]
         
         # Construire les données de page
         for page_no in sorted(page_texts.keys()):
@@ -245,3 +276,31 @@ class DoclingProcessor:
             })
         
         return annotations
+    
+    def _extract_table_text(self, table) -> str:
+        """
+        Extrait le texte d'une table Docling
+        
+        Args:
+            table: Objet TableItem de Docling
+            
+        Returns:
+            Texte formaté de la table
+        """
+        if not hasattr(table, 'data') or not table.data:
+            return ""
+        
+        table_data = table.data
+        
+        # Vérifier si la table a des cellules
+        if not hasattr(table_data, 'table_cells') or not table_data.table_cells:
+            return ""
+        
+        # Extraire le texte de toutes les cellules
+        texts = []
+        for cell in table_data.table_cells:
+            if hasattr(cell, 'text') and cell.text:
+                texts.append(cell.text)
+        
+        # Joindre tous les textes avec des espaces
+        return " | ".join(texts) if texts else ""
